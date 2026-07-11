@@ -46,10 +46,28 @@ Authorization evidence
 Policy Enforcement Point
       |
       v
+JIREH runtime viability and recovery
+      |
+      v
 Bounded runtime action and audit event
 ```
 
 OPA, external agent runtimes, micro-VMs, databases, networks, approval interfaces, and deployment systems are integration targets and are not currently part of this repository's implemented trusted computing base.
+
+### 3.1 JIREH runtime boundary
+
+> JIREH is KAIROSEED’s runtime viability and recovery layer, designed to monitor authorized agent execution and trigger bounded responses when operational conditions become unsafe or unstable.
+
+The canonical component boundary is:
+
+- authorization: `VEP → Govana Core → GAT → PEP`;
+- runtime supervision: `PEP → JIREH`;
+- observations: environment, affinity, resources, liveness, and stability;
+- bounded responses: `CONTINUE | THROTTLE | FAILOVER | BLOCK | COMPLETE`.
+
+JIREH may confirm that it received a valid, already-authorized execution context. It does not independently recreate the authorization decision, replace the PEP, or treat runtime viability as permission.
+
+JIREH does not guarantee safety, prevent every failure, prove global stability, or replace cryptographic authorization. Runtime viability and recovery controls remain target integration work unless explicitly identified as implemented and tested in this repository.
 
 ## 4. Security invariants
 
