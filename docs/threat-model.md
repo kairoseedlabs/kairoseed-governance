@@ -102,6 +102,85 @@ The exact authority, preconditions, state-preservation guarantees, rollback beha
 - JIREH is a mitigation and recovery design layer, not an infallible shield.
 - JIREH is not claimed as fully implemented or production validated by this threat model.
 
+### 3.2 JIREH failure-mode analysis
+
+This section defines target threat controls and verification obligations. It does not claim that JIREH is implemented or production validated.
+
+#### Governing failure rule
+
+> If JIREH cannot establish runtime viability within defined bounds, it must not silently authorize continued execution.
+
+JIREH also cannot create new permission. Every response remains constrained by the authorization scope handed off by the PEP.
+
+| ID | Failure mode | Security consequence | Required target response | Verification evidence |
+|---|---|---|---|---|
+| JF-01 | Forged `TaskExecutionContext` | Unauthorized task enters supervision | Reject handoff; request `BLOCK` | Context-binding and tamper tests |
+| JF-02 | Stale or expired context | Prior authority survives beyond its validity | Reject context; request `BLOCK` | Expiry, clock-skew and replay vectors |
+| JF-03 | Context does not match active packet, runtime or audience | Confused-deputy execution | Reject mismatch; request `BLOCK` | Packet/runtime/audience binding tests |
+| JF-04 | Missing, delayed or malformed telemetry | Viability cannot be established | Enter bounded degraded state; do not default to `CONTINUE` | Missing-data and timeout tests |
+| JF-05 | Spoofed telemetry | Unsafe execution appears nominal | Reject unauthenticated or inconsistent observations | Provenance and consistency tests |
+| JF-06 | False liveness positive | Hung task continues consuming authority or resources | Timeout, throttle and terminal escalation | Hung-task simulation |
+| JF-07 | False liveness negative | Healthy task is interrupted | Require corroborating evidence where risk permits; preserve audit trail | Noise and transient-failure tests |
+| JF-08 | Stability-threshold error | Unsafe drift is missed or benign behavior is blocked | Version thresholds; fail closed for undefined comparisons | Boundary and numerical edge vectors |
+| JF-09 | Resource-accounting evasion | Task exceeds authorized budget | Independent metering; `THROTTLE` then `BLOCK` at terminal ceiling | CPU, memory and time exhaustion tests |
+| JF-10 | Time-of-check/time-of-use race | Conditions change after observation but before action | Bind observation and action to context revision and monotonic sequence | Concurrency and stale-revision tests |
+| JF-11 | Recovery expands authorization scope | Failover becomes privilege escalation | Preserve or narrow scope; require new authorization for expansion | Scope-monotonicity tests |
+| JF-12 | Failover target is unauthorized or unhealthy | Task migrates into an unsafe environment | Verify target eligibility before transfer; otherwise `BLOCK` | Target-affinity and negative eligibility tests |
+| JF-13 | Failover loop or recovery storm | Cascading resource exhaustion | Bound retry count and backoff; terminal escalation | Repeated-failure and circuit-breaker tests |
+| JF-14 | State loss during failover | Integrity or continuity failure | Declare transfer failure; do not claim continuation | Interrupted-transfer tests |
+| JF-15 | Duplicate execution after failover | Action is performed more than once | Idempotency and lineage controls; detect duplicate task identity | Duplicate-delivery tests |
+| JF-16 | `BLOCK` signal does not reach the runtime actuator | Unsafe execution continues despite governance decision | Require acknowledgement and terminal timeout escalation | Actuator-disconnect tests |
+| JF-17 | Premature or forged `COMPLETE` | Resources release or audit closure occurs before completion | Bind completion to expected outputs and terminal evidence | Premature-completion tests |
+| JF-18 | Audit sink unavailable | Actions cannot be reconstructed | Apply documented safe degradation; never treat missing audit as permission | Audit-outage tests |
+| JF-19 | JIREH process crash or restart | Supervision disappears while execution continues | Default runtime lease expiry or external watchdog intervention | Crash, restart and lease-expiry tests |
+| JF-20 | Conflicting observations or response commands | Non-deterministic runtime control | Apply deterministic precedence and record conflict | Conflict-ordering golden vectors |
+
+#### Response precedence
+
+The response model requires an explicit deterministic precedence. The provisional safety ordering is:
+
+```text
+BLOCK > FAILOVER > THROTTLE > CONTINUE > COMPLETE
+```
+
+This ordering is not yet normative for all circumstances. In particular, `COMPLETE` is a terminal lifecycle outcome rather than a lower-severity safety response. The JIREH state-machine specification must define when completion is eligible and how conflicting terminal signals are resolved.
+
+#### Scope monotonicity
+
+JIREH may preserve or reduce the active authorization scope. It must not widen tool, resource, environment, audience, temporal, or data permissions. Any scope expansion requires a new VEP evaluation and new authorization evidence through:
+
+```text
+VEP → Govana Core → GAT → PEP
+```
+
+#### Safe degradation requirements
+
+A JIREH implementation must explicitly define behavior for:
+
+- unavailable telemetry;
+- unavailable audit storage;
+- unavailable failover targets;
+- expired runtime leases;
+- clock or sequence uncertainty;
+- actuator acknowledgement failure;
+- JIREH restart and state reconstruction.
+
+No undefined condition may implicitly select `CONTINUE`.
+
+#### Acceptance evidence
+
+Before JIREH runtime claims are permitted, the repository must contain:
+
+- a versioned `TaskExecutionContext` schema;
+- a deterministic transition table;
+- documented response preconditions and responsible actuator;
+- runtime lease and acknowledgement semantics;
+- scope-monotonicity tests;
+- concurrency and time-of-check/time-of-use tests;
+- crash, restart, audit-outage and telemetry-loss tests;
+- failover lineage and duplicate-execution tests;
+- evidence that undefined and exception paths never yield silent `CONTINUE`.
+
 ## 4. Security invariants
 
 1. Capability does not imply permission.
