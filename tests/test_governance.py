@@ -70,6 +70,31 @@ def test_malformed_required_values_fail_closed(field, value):
     assert result.decision is Decision.BLOCK
 
 
+@pytest.mark.parametrize(
+    "uncertainty_profile",
+    [
+        {"seen": {1}},
+        {"score": float("nan")},
+        {"score": float("inf")},
+    ],
+)
+def test_non_serializable_or_non_finite_metadata_fails_closed(uncertainty_profile):
+    result = evaluate(packet(uncertainty_profile=uncertainty_profile), POLICY)
+
+    assert result.decision is Decision.BLOCK
+    assert result.packet_digest is None
+
+
+def test_recursive_metadata_fails_closed():
+    recursive = {}
+    recursive["self"] = recursive
+
+    result = evaluate(packet(uncertainty_profile=recursive), POLICY)
+
+    assert result.decision is Decision.BLOCK
+    assert result.packet_digest is None
+
+
 def test_missing_packet_data_blocks():
     result = evaluate(packet(declared_purpose=""), POLICY)
     assert result.decision is Decision.BLOCK
