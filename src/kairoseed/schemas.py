@@ -63,9 +63,13 @@ class VerifiedExperimentPacket:
         return tuple(errors)
 
     def canonical_bytes(self) -> bytes:
-        """Return deterministic reference bytes for packet binding."""
+        """Return strict provisional bytes for packet binding.
+
+        This representation is intentionally not claimed as KCS-0.2 compliant.
+        """
         return json.dumps(
             asdict(self),
+            allow_nan=False,
             ensure_ascii=False,
             separators=(",", ":"),
             sort_keys=True,
