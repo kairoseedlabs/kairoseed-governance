@@ -1,10 +1,75 @@
 """Canonical boundary objects for governed execution."""
 
 import json
+import math
 from dataclasses import asdict, dataclass, field
 from hashlib import sha256
 from typing import Any
 from uuid import UUID
+
+
+_MAX_METADATA_DEPTH = 64
+
+
+def _json_domain_errors(
+    value: Any,
+    *,
+    path: str,
+    active_containers: set[int],
+    depth: int = 0,
+) -> list[str]:
+    """Validate a value without applying JSON's lossy key coercions."""
+    if depth > _MAX_METADATA_DEPTH:
+        return [f"{path} exceeds maximum metadata depth"]
+
+    if value is None or isinstance(value, (bool, str, int)):
+        return []
+
+    if isinstance(value, float):
+        return [] if math.isfinite(value) else [f"{path} contains a non-finite number"]
+
+    if isinstance(value, dict):
+        container_id = id(value)
+        if container_id in active_containers:
+            return [f"{path} contains a recursive object"]
+
+        active_containers.add(container_id)
+        errors: list[str] = []
+        for key, item in value.items():
+            if not isinstance(key, str):
+                errors.append(f"{path} contains a non-string object key")
+                continue
+            errors.extend(
+                _json_domain_errors(
+                    item,
+                    path=f"{path}.{key}",
+                    active_containers=active_containers,
+                    depth=depth + 1,
+                )
+            )
+        active_containers.remove(container_id)
+        return errors
+
+    if isinstance(value, list):
+        container_id = id(value)
+        if container_id in active_containers:
+            return [f"{path} contains a recursive array"]
+
+        active_containers.add(container_id)
+        errors = []
+        for index, item in enumerate(value):
+            errors.extend(
+                _json_domain_errors(
+                    item,
+                    path=f"{path}[{index}]",
+                    active_containers=active_containers,
+                    depth=depth + 1,
+                )
+            )
+        active_containers.remove(container_id)
+        return errors
+
+    return [f"{path} contains a value outside the strict JSON domain"]
 
 
 @dataclass(frozen=True)
@@ -59,6 +124,23 @@ class VerifiedExperimentPacket:
             or any(not isinstance(item, str) or not item.strip() for item in self.authorization_scope)
         ):
             errors.append("authorization_scope must be a non-empty tuple of strings")
+
+        if (
+            not isinstance(self.evidence_references, tuple)
+            or any(not isinstance(item, str) or not item.strip() for item in self.evidence_references)
+        ):
+            errors.append("evidence_references must be a tuple of non-empty strings")
+
+        if not isinstance(self.uncertainty_profile, dict):
+            errors.append("uncertainty_profile must be an object")
+        else:
+            errors.extend(
+                _json_domain_errors(
+                    self.uncertainty_profile,
+                    path="uncertainty_profile",
+                    active_containers=set(),
+                )
+            )
 
         return tuple(errors)
 
