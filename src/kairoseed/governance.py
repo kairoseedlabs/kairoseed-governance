@@ -35,8 +35,15 @@ def evaluate(packet: VerifiedExperimentPacket, policy: GovernancePolicy) -> Eval
     if errors:
         return Evaluation(Decision.BLOCK, errors)
 
+    try:
+        packet_digest = packet.digest()
+    except (TypeError, ValueError, OverflowError, RecursionError):
+        return Evaluation(
+            Decision.BLOCK,
+            ("packet cannot be encoded by the provisional canonicalizer",),
+        )
+
     packet_id = packet.packet_id
-    packet_digest = packet.digest()
 
     if packet.tool_request not in policy.allowed_tools | policy.critical_tools:
         return Evaluation(
