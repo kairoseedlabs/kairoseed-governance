@@ -54,20 +54,53 @@ Bounded runtime action and audit event
 
 OPA, external agent runtimes, micro-VMs, databases, networks, approval interfaces, and deployment systems are integration targets and are not currently part of this repository's implemented trusted computing base.
 
-### 3.1 JIREH runtime boundary
+### 3.1 JIREH component specification
+
+#### Role and definition
 
 > JIREH is KAIROSEED’s runtime viability and recovery layer, designed to monitor authorized agent execution and trigger bounded responses when operational conditions become unsafe or unstable.
 
-The canonical component boundary is:
+JIREH is not the Policy Decision Point or the cryptographic authorization layer. Govana Core evaluates policy, GAT carries authorization evidence, and the PEP verifies and enforces that evidence before runtime supervision begins.
+
+#### Trust boundary and handoff
+
+The canonical boundary is:
 
 - authorization: `VEP → Govana Core → GAT → PEP`;
-- runtime supervision: `PEP → JIREH`;
-- observations: environment, affinity, resources, liveness, and stability;
-- bounded responses: `CONTINUE | THROTTLE | FAILOVER | BLOCK | COMPLETE`.
+- runtime supervision: `PEP → JIREH`.
 
-JIREH may confirm that it received a valid, already-authorized execution context. It does not independently recreate the authorization decision, replace the PEP, or treat runtime viability as permission.
+JIREH accepts a bounded `TaskExecutionContext` handed off by the PEP. It may confirm that the context is marked as already authorized and contains the identifiers needed for runtime binding. Mere presence of a GAT is insufficient proof of authorization: cryptographic verification, freshness, scope, audience, and packet binding remain PEP responsibilities.
 
-JIREH does not guarantee safety, prevent every failure, prove global stability, or replace cryptographic authorization. Runtime viability and recovery controls remain target integration work unless explicitly identified as implemented and tested in this repository.
+JIREH does not recreate the authorization decision. Runtime viability also cannot broaden the scope granted by the PEP.
+
+#### Runtime observations
+
+JIREH is designed to observe:
+
+- **environment and affinity:** whether execution remains within its assigned runtime boundary;
+- **resources:** whether compute, memory, time, and other governed budgets remain acceptable;
+- **liveness:** whether the task is progressing and responding within defined bounds;
+- **stability:** whether monitored signals cross an explicitly specified threshold.
+
+#### Bounded responses
+
+The target response set is:
+
+- `CONTINUE`: observed conditions remain within defined bounds;
+- `THROTTLE`: constrain execution when governed resource pressure is detected;
+- `FAILOVER`: request transfer to an authorized recovery target when failover preconditions are satisfied;
+- `BLOCK`: request or enforce termination through the responsible runtime control when a terminal boundary is crossed;
+- `COMPLETE`: record nominal completion and initiate governed resource release.
+
+The exact authority, preconditions, state-preservation guarantees, rollback behavior, and responsible enforcement component for each response must be specified and tested before production claims are made.
+
+#### Explicit non-claims
+
+- JIREH does not replace, generate, or independently validate cryptographic authorization.
+- JIREH does not guarantee absolute safety or prevent every execution failure.
+- JIREH does not prove global system stability.
+- JIREH is a mitigation and recovery design layer, not an infallible shield.
+- JIREH is not claimed as fully implemented or production validated by this threat model.
 
 ## 4. Security invariants
 
