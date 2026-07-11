@@ -24,6 +24,8 @@ class GovernancePolicy:
 class Evaluation:
     decision: Decision
     reasons: tuple[str, ...]
+    packet_id: str | None = None
+    packet_digest: str | None = None
     requires_human_review: bool = False
 
 
@@ -33,19 +35,46 @@ def evaluate(packet: VerifiedExperimentPacket, policy: GovernancePolicy) -> Eval
     if errors:
         return Evaluation(Decision.BLOCK, errors)
 
+    try:
+        packet_digest = packet.digest()
+    except (TypeError, ValueError, OverflowError, RecursionError):
+        return Evaluation(
+            Decision.BLOCK,
+            ("packet cannot be encoded by the provisional canonicalizer",),
+        )
+
+    packet_id = packet.packet_id
+
     if packet.tool_request not in policy.allowed_tools | policy.critical_tools:
-        return Evaluation(Decision.BLOCK, ("tool is outside policy",))
+        return Evaluation(
+            Decision.BLOCK,
+            ("tool is outside policy",),
+            packet_id,
+            packet_digest,
+        )
 
     if packet.tool_request not in packet.authorization_scope:
-        return Evaluation(Decision.BLOCK, ("tool is outside authorization scope",))
+        return Evaluation(
+            Decision.BLOCK,
+            ("tool is outside authorization scope",),
+            packet_id,
+            packet_digest,
+        )
 
     if packet.resource_budget > policy.max_resource_budget:
-        return Evaluation(Decision.BLOCK, ("resource budget exceeds policy ceiling",))
+        return Evaluation(
+            Decision.BLOCK,
+            ("resource budget exceeds policy ceiling",),
+            packet_id,
+            packet_digest,
+        )
 
     if packet.tool_request in policy.critical_tools:
         return Evaluation(
             Decision.WARN,
             ("critical capability requires explicit human authorization",),
+            packet_id,
+            packet_digest,
             requires_human_review=True,
         )
 
@@ -53,7 +82,14 @@ def evaluate(packet: VerifiedExperimentPacket, policy: GovernancePolicy) -> Eval
         return Evaluation(
             Decision.WARN,
             ("evidence is required before authorization",),
+            packet_id,
+            packet_digest,
             requires_human_review=True,
         )
 
-    return Evaluation(Decision.PASS, ("policy requirements satisfied",))
+    return Evaluation(
+        Decision.PASS,
+        ("policy requirements satisfied",),
+        packet_id,
+        packet_digest,
+    )
