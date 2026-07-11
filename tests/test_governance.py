@@ -33,9 +33,41 @@ def packet(**overrides):
 
 
 def test_valid_bounded_request_passes():
-    result = evaluate(packet(), POLICY)
+    request = packet()
+    result = evaluate(request, POLICY)
+    token = issue_token(result)
+
     assert result.decision is Decision.PASS
-    assert authorize_execution(issue_token(packet_id="p1", evaluation=result))
+    assert token.packet_id == request.packet_id
+    assert token.packet_digest == request.digest()
+    assert authorize_execution(token)
+
+
+def test_pass_evaluation_cannot_mint_token_for_another_packet():
+    first = packet()
+    second = packet()
+    token = issue_token(evaluate(first, POLICY))
+
+    assert token.packet_id == first.packet_id
+    assert token.packet_digest == first.digest()
+    assert token.packet_id != second.packet_id
+    assert token.packet_digest != second.digest()
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("packet_id", None),
+        ("agent_id", None),
+        ("declared_purpose", None),
+        ("tool_request", None),
+        ("resource_budget", None),
+        ("authorization_scope", None),
+    ],
+)
+def test_malformed_required_values_fail_closed(field, value):
+    result = evaluate(packet(**{field: value}), POLICY)
+    assert result.decision is Decision.BLOCK
 
 
 def test_missing_packet_data_blocks():
@@ -60,4 +92,4 @@ def test_critical_tool_requires_review_when_scoped():
 def test_warn_cannot_issue_authorization():
     result = evaluate(packet(evidence_references=()), POLICY)
     with pytest.raises(PermissionError):
-        issue_token(packet_id="p2", evaluation=result)
+        issue_token(result)
