@@ -85,6 +85,34 @@ def test_non_serializable_or_non_finite_metadata_fails_closed(uncertainty_profil
     assert result.packet_digest is None
 
 
+@pytest.mark.parametrize(
+    "uncertainty_profile",
+    [
+        {1: "x"},
+        {True: "x"},
+        {None: "x"},
+        {"outer": {1: "x"}},
+        {"items": [{"valid": "x"}, {False: "y"}]},
+    ],
+)
+def test_non_string_metadata_keys_fail_closed_recursively(uncertainty_profile):
+    result = evaluate(packet(uncertainty_profile=uncertainty_profile), POLICY)
+
+    assert result.decision is Decision.BLOCK
+    assert result.packet_digest is None
+
+
+def test_string_key_packet_does_not_collide_with_rejected_integer_key_packet():
+    rejected = evaluate(packet(uncertainty_profile={1: "x"}), POLICY)
+    accepted_packet = packet(uncertainty_profile={"1": "x"})
+    accepted = evaluate(accepted_packet, POLICY)
+
+    assert rejected.decision is Decision.BLOCK
+    assert rejected.packet_digest is None
+    assert accepted.decision is Decision.PASS
+    assert accepted.packet_digest == accepted_packet.digest()
+
+
 def test_recursive_metadata_fails_closed():
     recursive = {}
     recursive["self"] = recursive
