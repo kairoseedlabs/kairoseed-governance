@@ -1,0 +1,16 @@
+{
+  "allowed_tools": [
+    "http_get",
+    "log_telemetry",
+    "query_vector_store",
+    "read_db"
+  ],
+  "critical_tools": [
+    "delete_resource",
+    "execute_shell",
+    "route_funds",
+    "write_db"
+  ],
+  "max_resource_budget": 1000,
+  "require_evidence": true
+}
