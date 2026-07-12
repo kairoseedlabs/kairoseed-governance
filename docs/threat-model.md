@@ -18,13 +18,14 @@ It is a design and review artifact. It does not claim that every required contro
 | VEP structural validation | Implemented reference control | Hardened and fuzz-tested |
 | PASS/WARN/BLOCK evaluation | Implemented reference control | Versioned deterministic PDP |
 | Packet-to-token binding | Provisional SHA-256 digest binding | KCS-0.2 canonical digest binding |
-| Canonicalization | Strict provisional Python JSON | Cross-runtime KCS-0.2 |
+| VEP packet canonicalization | Strict provisional Python JSON for VEP packets only | Cross-runtime KCS-0.2 |
+| Audit-record canonicalization | Non-strict Python JSON hashing; not canonical security evidence | Strict canonical audit encoding with adversarial vectors |
 | Cryptographic signing | Not implemented | Ed25519 or reviewed equivalent |
 | Replay protection | Not implemented | Context-bound, time-bound and auditable |
 | Cross-runtime parity | Not demonstrated | Python/TypeScript golden-vector parity |
 | Production security boundary | Not claimed | Requires independent validation |
 
-The current serializer is explicitly **not KCS-0.2 compliant**.
+The current VEP packet serializer is explicitly **not KCS-0.2 compliant**. The audit-record serializer is also non-strict: it has not yet adopted the VEP JSON-domain validation, non-finite-number rejection, or a canonical cross-runtime encoding. Current audit hashes must not be represented as canonical or cryptographically signed security evidence.
 
 ## 3. System model
 
@@ -455,7 +456,9 @@ The following evidence is required before the relevant claims may advance:
 - Python/TypeScript byte-for-byte equality;
 - reordered equivalent objects produce identical bytes;
 - distinct typed inputs cannot collide through coercion;
-- duplicate keys and unsupported values are rejected.
+- duplicate keys and unsupported values are rejected;
+- VEP and audit-record canonicalization are tested as separate security boundaries;
+- audit payloads reject non-string object keys, non-finite numbers, recursive values, and unsupported types before hashing.
 
 ### Fuzzing
 
