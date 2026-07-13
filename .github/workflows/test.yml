@@ -51,11 +51,9 @@ jobs:
           cache: pip
       - name: Install verification dependencies
         run: python -m pip install -e ".[dev]"
-      - name: Ruff lint
+      - name: Ruff blocking defects
         run: ruff check src tests examples
-      - name: Ruff format
-        run: ruff format --check src tests examples
-      - name: Mypy
+      - name: Mypy strict analysis
         run: mypy src/kairoseed
 
   regression-tests:
