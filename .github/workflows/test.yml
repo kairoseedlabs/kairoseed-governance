@@ -1,20 +1,156 @@
-name: tests
+name: verification-contract
 
 on:
   push:
     branches: ["main"]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: verification-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  test:
+  candidate-build:
+    name: Unsigned Candidate Build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python -m pip install -e ".[dev]"
-      - run: pytest
+          cache: pip
+      - name: Install build tooling
+        run: python -m pip install --upgrade pip build
+      - name: Build unsigned candidate
+        run: |
+          python -m build --wheel
+          test -n "$(find dist -maxdepth 1 -name '*.whl' -print -quit)"
+      - name: Confirm no release action occurred
+        run: |
+          echo "Candidate exists only in this ephemeral test runner."
+          echo "No signing, attestation, publication, promotion, deployment, or artifact upload is authorized."
+
+  static-analysis:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install verification dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Ruff lint
+        run: ruff check src tests examples
+      - name: Ruff format
+        run: ruff format --check src tests examples
+      - name: Mypy
+        run: mypy src/kairoseed
+
+  regression-tests:
+    name: Regression Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install verification dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Run fail-closed regression suite
+        run: |
+          pytest \
+            --cov=kairoseed \
+            --cov-branch \
+            --cov-report=term-missing \
+            --cov-fail-under=80
+
+  verification-contract:
+    name: Fail-Closed Verification Contract
+    if: always()
+    needs: [candidate-build, static-analysis, regression-tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install package
+        run: python -m pip install -e .
+      - name: Evaluate non-release CI evidence
+        env:
+          CANDIDATE_RESULT: ${{ needs.candidate-build.result }}
+          STATIC_RESULT: ${{ needs.static-analysis.result }}
+          REGRESSION_RESULT: ${{ needs.regression-tests.result }}
+          SOURCE_REVISION: ${{ github.sha }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+
+          results = (
+              os.environ["CANDIDATE_RESULT"],
+              os.environ["STATIC_RESULT"],
+              os.environ["REGRESSION_RESULT"],
+          )
+          required = "PASS" if all(result == "success" for result in results) else "BLOCK"
+          evidence = {
+              "required_checks": required,
+              "evidence_complete": "PASS",
+              "authority_valid": "MISSING",
+              "candidate_source": os.environ["SOURCE_REVISION"],
+              "evidence_source": os.environ["SOURCE_REVISION"],
+              "authority_source": os.environ["SOURCE_REVISION"],
+              "last_approved_release": None,
+          }
+          with open("release-evidence.json", "w", encoding="utf-8") as handle:
+              json.dump(evidence, handle, sort_keys=True, separators=(",", ":"))
+              handle.write("\n")
+          PY
+
+          set +e
+          python -m kairoseed.release_gate release-evidence.json --output release-decision.json
+          gate_status=$?
+          set -e
+
+          python - <<'PY'
+          import json
+
+          with open("release-decision.json", encoding="utf-8") as handle:
+              decision = json.load(handle)
+          if decision["decision"] != "BLOCK" or decision["release_allowed"] is not False:
+              raise SystemExit("non-release CI must remain BLOCK without valid release authority")
+          PY
+
+          if [ "$gate_status" -eq 0 ]; then
+            echo "Release gate unexpectedly returned PASS without authority."
+            exit 1
+          fi
+
+          if [ "$CANDIDATE_RESULT" != "success" ] || \
+             [ "$STATIC_RESULT" != "success" ] || \
+             [ "$REGRESSION_RESULT" != "success" ]; then
+            echo "One or more mandatory verification controls did not PASS."
+            exit 1
+          fi
+
+          echo "Mandatory verification controls passed; release minting remains BLOCKED because release authority is absent."
