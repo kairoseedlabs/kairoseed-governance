@@ -45,7 +45,12 @@ class ReleaseEvidence:
     @property
     def source_bound(self) -> bool:
         """Return True only when all evidence names one exact source revision."""
-        return bool(self.candidate_source) and (
+        sources = (
+            self.candidate_source,
+            self.evidence_source,
+            self.authority_source,
+        )
+        return all(isinstance(source, str) and bool(source) for source in sources) and (
             self.candidate_source == self.evidence_source == self.authority_source
         )
 
