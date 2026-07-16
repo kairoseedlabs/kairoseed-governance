@@ -125,9 +125,8 @@ class VerifiedExperimentPacket:
         ):
             errors.append("authorization_scope must be a non-empty tuple of strings")
 
-        if (
-            not isinstance(self.evidence_references, tuple)
-            or any(not isinstance(item, str) or not item.strip() for item in self.evidence_references)
+        if not isinstance(self.evidence_references, tuple) or any(
+            not isinstance(item, str) or not item.strip() for item in self.evidence_references
         ):
             errors.append("evidence_references must be a tuple of non-empty strings")
 
