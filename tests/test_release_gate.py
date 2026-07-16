@@ -129,18 +129,14 @@ def test_json_boolean_source_identifiers_fail_closed(tmp_path: Path) -> None:
 
 
 def test_block_preserves_last_known_approved_release() -> None:
-    result = evaluate_release(
-        evidence(required_checks=ControlOutcome.TIMEOUT.value)
-    )
+    result = evaluate_release(evidence(required_checks=ControlOutcome.TIMEOUT.value))
 
     assert result.decision is Decision.BLOCK
     assert result.preserved_release == LAST_APPROVED
 
 
 def test_result_serialization_records_decision_and_preserved_release() -> None:
-    result = evaluate_release(
-        evidence(authority_valid=ControlOutcome.UNAUTHORIZED_SKIP.value)
-    )
+    result = evaluate_release(evidence(authority_valid=ControlOutcome.UNAUTHORIZED_SKIP.value))
 
     assert result.as_dict() == {
         "decision": "BLOCK",
