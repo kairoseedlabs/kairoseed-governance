@@ -299,3 +299,6 @@ An audit is incomplete until the reviewer can identify:
 - the enforcement point that independently verifies it;
 - the mechanism that ends or invalidates it;
 - the audit evidence that proves the lifecycle occurred as designed.
+
+Strong Accept + Pass + DoD
+Done = Amen.
