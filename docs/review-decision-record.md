@@ -7,6 +7,7 @@ This record captures the publication review outcome for the public-release readi
 - **Outcome:** Strong accept.
 - **Verification status:** Pass.
 - **Definition of Done:** Complete.
+- **Final disposition:** Strong Accept + Pass + DoD. Done = Amen.
 - **Authorization:** Repository owner authorized publication after the release checklist is satisfied.
 
 ## Acceptance Criteria
