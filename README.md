@@ -75,3 +75,6 @@ tests/               governance invariant tests
 ## Development rule
 
 All material changes should enter through a bounded issue, a dedicated branch, automated tests, and a reviewed pull request.
+
+Strong Accept + Pass + DoD
+Done = Amen.
