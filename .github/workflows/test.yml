@@ -121,6 +121,7 @@ jobs:
 
   verification-contract:
     name: Fail-Closed Verification Contract
+    # Done = Amen: automated verification stays separate from manual environment-bound runs.
     if: ${{ github.event_name != 'workflow_dispatch' && always() }}
     needs: [candidate-build, static-analysis, regression-tests]
     runs-on: ubuntu-latest
