@@ -5,6 +5,25 @@ on:
     branches: ["main"]
   pull_request:
   workflow_dispatch:
+    inputs:
+      logLevel:
+        description: "Log level"
+        required: true
+        default: "warning"
+        type: choice
+        options:
+          - info
+          - warning
+          - debug
+      tags:
+        description: "Run the tagged test scenario set"
+        required: false
+        default: false
+        type: boolean
+      environment:
+        description: "Environment to run tests against"
+        required: true
+        type: environment
 
 permissions:
   contents: read
@@ -14,8 +33,26 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  workflow-dispatch-inputs:
+    name: Workflow Dispatch Inputs
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 5
+    steps:
+      - name: Log manual dispatch inputs
+        run: |
+          echo "Log level: $LEVEL"
+          echo "Tags: $TAGS"
+          echo "Environment: $ENVIRONMENT"
+        env:
+          LEVEL: ${{ inputs.logLevel }}
+          TAGS: ${{ inputs.tags }}
+          ENVIRONMENT: ${{ inputs.environment }}
+
   candidate-build:
     name: Unsigned Candidate Build
+    if: ${{ github.event_name != 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -39,6 +76,7 @@ jobs:
 
   static-analysis:
     name: Static Analysis
+    if: ${{ github.event_name != 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -60,6 +98,7 @@ jobs:
 
   regression-tests:
     name: Regression Tests
+    if: ${{ github.event_name != 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -82,7 +121,8 @@ jobs:
 
   verification-contract:
     name: Fail-Closed Verification Contract
-    if: always()
+    # Done = Amen: automated verification stays separate from manual environment-bound runs.
+    if: ${{ github.event_name != 'workflow_dispatch' && always() }}
     needs: [candidate-build, static-analysis, regression-tests]
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -154,3 +194,156 @@ jobs:
           fi
 
           echo "Mandatory verification controls passed; release minting remains BLOCKED because release authority is absent."
+
+  manual-candidate-build:
+    name: Manual Unsigned Candidate Build
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    needs: [workflow-dispatch-inputs]
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install build tooling
+        run: python -m pip install --upgrade pip build
+      - name: Build unsigned candidate
+        run: |
+          python -m build --wheel
+          test -n "$(find dist -maxdepth 1 -name '*.whl' -print -quit)"
+      - name: Confirm no release action occurred
+        run: |
+          echo "Candidate exists only in this ephemeral test runner."
+          echo "No signing, attestation, publication, promotion, deployment, or artifact upload is authorized."
+
+  manual-static-analysis:
+    name: Manual Static Analysis
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    needs: [workflow-dispatch-inputs]
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install verification dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Ruff lint compliance
+        run: ruff check src tests examples
+      - name: Ruff format compliance
+        run: ruff format --check src tests examples
+      - name: Mypy strict analysis
+        run: mypy src/kairoseed
+
+  manual-regression-tests:
+    name: Manual Regression Tests
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    needs: [workflow-dispatch-inputs]
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install verification dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Run fail-closed regression suite
+        run: |
+          pytest \
+            --cov=kairoseed \
+            --cov-branch \
+            --cov-report=term-missing \
+            --cov-fail-under=80
+
+  manual-verification-contract:
+    name: Manual Fail-Closed Verification Contract
+    if: ${{ github.event_name == 'workflow_dispatch' && always() }}
+    needs: [manual-candidate-build, manual-static-analysis, manual-regression-tests]
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install package
+        run: python -m pip install -e .
+      - name: Evaluate non-release CI evidence
+        env:
+          CANDIDATE_RESULT: ${{ needs.manual-candidate-build.result }}
+          STATIC_RESULT: ${{ needs.manual-static-analysis.result }}
+          REGRESSION_RESULT: ${{ needs.manual-regression-tests.result }}
+          SOURCE_REVISION: ${{ github.sha }}
+          DISPATCH_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+
+          results = (
+              os.environ["CANDIDATE_RESULT"],
+              os.environ["STATIC_RESULT"],
+              os.environ["REGRESSION_RESULT"],
+          )
+          required = "PASS" if all(result == "success" for result in results) else "BLOCK"
+          evidence = {
+              "required_checks": required,
+              "evidence_complete": "PASS",
+              "authority_valid": "MISSING",
+              "candidate_source": os.environ["SOURCE_REVISION"],
+              "evidence_source": os.environ["SOURCE_REVISION"],
+              "authority_source": os.environ["SOURCE_REVISION"],
+              "manual_environment": os.environ["DISPATCH_ENVIRONMENT"],
+              "last_approved_release": None,
+          }
+          with open("release-evidence.json", "w", encoding="utf-8") as handle:
+              json.dump(evidence, handle, sort_keys=True, separators=(",", ":"))
+              handle.write("\n")
+          PY
+
+          set +e
+          python -m kairoseed.release_gate release-evidence.json --output release-decision.json
+          gate_status=$?
+          set -e
+
+          python - <<'PY'
+          import json
+
+          with open("release-decision.json", encoding="utf-8") as handle:
+              decision = json.load(handle)
+          if decision["decision"] != "BLOCK" or decision["release_allowed"] is not False:
+              raise SystemExit("manual CI must remain BLOCK without valid release authority")
+          PY
+
+          if [ "$gate_status" -eq 0 ]; then
+            echo "Release gate unexpectedly returned PASS without authority."
+            exit 1
+          fi
+
+          if [ "$CANDIDATE_RESULT" != "success" ] || \
+             [ "$STATIC_RESULT" != "success" ] || \
+             [ "$REGRESSION_RESULT" != "success" ]; then
+            echo "One or more mandatory manual verification controls did not PASS."
+            exit 1
+          fi
+
+          echo "Manual verification controls passed in $DISPATCH_ENVIRONMENT; release minting remains BLOCKED because release authority is absent."
