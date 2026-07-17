@@ -5,6 +5,25 @@ on:
     branches: ["main"]
   pull_request:
   workflow_dispatch:
+    inputs:
+      logLevel:
+        description: "Log level"
+        required: true
+        default: "warning"
+        type: choice
+        options:
+          - info
+          - warning
+          - debug
+      tags:
+        description: "Run the tagged test scenario set"
+        required: false
+        default: false
+        type: boolean
+      environment:
+        description: "Environment to run tests against"
+        required: true
+        type: environment
 
 permissions:
   contents: read
@@ -14,6 +33,22 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  workflow-dispatch-inputs:
+    name: Workflow Dispatch Inputs
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Log manual dispatch inputs
+        run: |
+          echo "Log level: $LEVEL"
+          echo "Tags: $TAGS"
+          echo "Environment: $ENVIRONMENT"
+        env:
+          LEVEL: ${{ inputs.logLevel }}
+          TAGS: ${{ inputs.tags }}
+          ENVIRONMENT: ${{ inputs.environment }}
+
   candidate-build:
     name: Unsigned Candidate Build
     runs-on: ubuntu-latest
