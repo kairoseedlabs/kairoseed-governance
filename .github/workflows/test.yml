@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       logLevel:
-        description: "Log level"
+        description: "Log level to record in manual verification evidence"
         required: true
         default: "warning"
         type: choice
@@ -16,7 +16,7 @@ on:
           - warning
           - debug
       tags:
-        description: "Run the tagged test scenario set"
+        description: "Record whether this manual run is associated with tagged scenarios"
         required: false
         default: false
         type: boolean
@@ -45,6 +45,8 @@ jobs:
           echo "Log level: $LEVEL"
           echo "Tags: $TAGS"
           echo "Environment: $ENVIRONMENT"
+          echo "Environment input is applied as the GitHub Actions environment for manual verification jobs."
+          echo "Log level and tags are recorded as manual-run metadata only."
         env:
           LEVEL: ${{ inputs.logLevel }}
           TAGS: ${{ inputs.tags }}
@@ -294,6 +296,8 @@ jobs:
           REGRESSION_RESULT: ${{ needs.manual-regression-tests.result }}
           SOURCE_REVISION: ${{ github.sha }}
           DISPATCH_ENVIRONMENT: ${{ inputs.environment }}
+          DISPATCH_LOG_LEVEL: ${{ inputs.logLevel }}
+          DISPATCH_TAGS: ${{ inputs.tags }}
         run: |
           python - <<'PY'
           import json
@@ -313,6 +317,8 @@ jobs:
               "evidence_source": os.environ["SOURCE_REVISION"],
               "authority_source": os.environ["SOURCE_REVISION"],
               "manual_environment": os.environ["DISPATCH_ENVIRONMENT"],
+              "manual_log_level": os.environ["DISPATCH_LOG_LEVEL"],
+              "manual_tags_requested": os.environ["DISPATCH_TAGS"],
               "last_approved_release": None,
           }
           with open("release-evidence.json", "w", encoding="utf-8") as handle:
