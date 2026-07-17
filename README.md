@@ -64,7 +64,14 @@ src/kairoseed/
 policies/            declarative policy examples
 examples/            executable usage examples
 tests/               governance invariant tests
+docs/foundations/    theological and architectural foundations
+docs/sops/           repeatable governance review procedures
 ```
+
+## Documentation
+
+- [Created Time and Appointed Arrival](docs/foundations/created-time-and-appointed-arrival.md) — the Kairos–Chronos distinction, readiness invariants, lifecycle model, and current implementation mapping
+- [KAIROSEED Architectural Audit SOP](docs/sops/kairoseed-architectural-audit.md) — the Three-Gate PASS/WARN/BLOCK review workflow and reusable audit prompt
 
 ## Relationship to other KAIROSEED repositories
 
