@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "vectors": "node dist/vector-runner.js --vectors ../../tests/golden_vectors.json --output /tmp/kcs02-typescript-results.json",
+    "parity": "npm run build && npm run vectors"
   },
   "devDependencies": {
     "@types/node": "22.10.2",
