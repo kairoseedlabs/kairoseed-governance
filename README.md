@@ -52,6 +52,23 @@ pytest
 python examples/evaluate_packet.py
 ```
 
+## KCS-0.2 parity check
+
+The cross-language canonicalization gate can be reproduced locally with the same frozen vectors used in CI:
+
+```bash
+python tests/run_python_vectors.py \
+  --vectors tests/golden_vectors.json \
+  --output /tmp/kcs02-python-results.json
+
+(cd kairoseed/kcs02-ts && npm ci --ignore-scripts && npm run parity)
+
+python tests/compare_kcs02_vectors.py \
+  --vectors tests/golden_vectors.json \
+  --python-results /tmp/kcs02-python-results.json \
+  --typescript-results /tmp/kcs02-typescript-results.json
+```
+
 ## Repository map
 
 ```text
