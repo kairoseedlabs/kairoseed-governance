@@ -1,0 +1,36 @@
+name: SLSA Container Provenance
+
+on:
+  workflow_call:
+    inputs:
+      image:
+        description: OCI image name without tag or digest
+        required: true
+        type: string
+      digest:
+        description: Immutable image digest in algorithm:digest form
+        required: true
+        type: string
+      registry-username:
+        description: Registry username when required
+        required: false
+        type: string
+    secrets:
+      registry-password:
+        required: false
+
+permissions: {}
+
+jobs:
+  provenance:
+    permissions:
+      actions: read
+      id-token: write
+      packages: write
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
+    with:
+      image: ${{ inputs.image }}
+      digest: ${{ inputs.digest }}
+      registry-username: ${{ inputs.registry-username }}
+    secrets:
+      registry-password: ${{ secrets.registry-password }}
