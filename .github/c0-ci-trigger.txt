@@ -1,0 +1,1 @@
+C0 CI trigger marker. No production behavior; exists only to trigger verification-contract on push.
