@@ -11,7 +11,7 @@ from hashlib import sha256
 from threading import Lock
 from typing import Callable
 
-from .authorization import GovernanceAuthorizationToken, issue_token
+from .authorization import issue_token
 from .governance import Decision, Evaluation, GovernancePolicy, evaluate
 from .schemas import VerifiedExperimentPacket
 
@@ -43,21 +43,24 @@ class C0:
         self._policy = policy
         self._lock = Lock()
 
+    def _authorize_locked(self, packet: VerifiedExperimentPacket) -> C0Result:
+        evaluation = evaluate(packet, self._policy)
+        if evaluation.decision is not Decision.PASS:
+            return C0Result(evaluation, None, False)
+
+        token = issue_token(evaluation)
+        evidence = C0Evidence(
+            packet_id=token.packet_id,
+            packet_digest=token.packet_digest,
+            decision=token.decision,
+            evidence_hash=token.evidence_hash,
+        )
+        return C0Result(evaluation, evidence, True)
+
     def authorize(self, packet: VerifiedExperimentPacket) -> C0Result:
         """Evaluate a packet and issue evidence only for PASS."""
         with self._lock:
-            evaluation = evaluate(packet, self._policy)
-            if evaluation.decision is not Decision.PASS:
-                return C0Result(evaluation, None, False)
-
-            token = issue_token(evaluation)
-            evidence = C0Evidence(
-                packet_id=token.packet_id,
-                packet_digest=token.packet_digest,
-                decision=token.decision,
-                evidence_hash=token.evidence_hash,
-            )
-            return C0Result(evaluation, evidence, True)
+            return self._authorize_locked(packet)
 
     def execute(
         self,
@@ -71,7 +74,7 @@ class C0:
         effect target.
         """
         with self._lock:
-            result = self.authorize(packet)
+            result = self._authorize_locked(packet)
             if not result.effect_permitted:
                 return result
             effect()
