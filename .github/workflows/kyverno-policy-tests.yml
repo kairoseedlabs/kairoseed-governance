@@ -1,0 +1,26 @@
+name: Kyverno Policy Tests
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  kyverno:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Kyverno CLI
+        uses: kyverno/action-install-cli@v0.2.0
+        with:
+          release: v1.18.2
+
+      - name: Show Kyverno version
+        run: kyverno version
+
+      - name: Run policy tests
+        run: kyverno test tests/kyverno --detailed-results
