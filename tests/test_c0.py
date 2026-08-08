@@ -1,5 +1,4 @@
 from dataclasses import replace
-from uuid import UUID
 
 import pytest
 
