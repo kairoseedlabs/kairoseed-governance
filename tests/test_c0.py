@@ -57,7 +57,10 @@ def test_block_never_permits_effect(c0: C0) -> None:
 
 def test_warn_never_permits_effect(c0: C0) -> None:
     result = c0.authorize(
-        packet(tool_request="critical.write", authorization_scope=("critical.write",))
+        packet(
+            tool_request="critical.write",
+            authorization_scope=("critical.write",),
+        )
     )
 
     assert result.evaluation.decision is Decision.WARN
@@ -96,7 +99,8 @@ def test_executor_called_only_after_pass(c0: C0) -> None:
     effects: list[str] = []
 
     blocked = c0.execute(
-        packet(tool_request="unknown.write"), lambda: effects.append("blocked")
+        packet(tool_request="unknown.write"),
+        lambda: effects.append("blocked"),
     )
     passed = c0.execute(packet(), lambda: effects.append("passed"))
 
