@@ -1,0 +1,27 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: govana-require-approved-registry
+  annotations:
+    policies.kyverno.io/title: Restrict images to approved registry
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: high
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: approved-registry
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Container images must originate from the approved registry ghcr.io/your-org/."
+        foreach:
+          - list: "request.object.spec.containers[]"
+            pattern:
+              image: "ghcr.io/your-org/*@sha256:*"
+          - list: "request.object.spec.initContainers[]"
+            pattern:
+              image: "ghcr.io/your-org/*@sha256:*"
