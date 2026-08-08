@@ -1,0 +1,126 @@
+schema_version: "1.0"
+framework:
+  name: NIST SP 800-218 Secure Software Development Framework
+  version: "1.1"
+  mapping_type: implementation_mapping
+  claim_scope: "This mapping documents implementation alignment. It is not a certification or regulatory compliance determination."
+
+controls:
+  - id: SC-01
+    control: Version-controlled source and protected review workflow
+    ssdf:
+      - PO.1
+      - PO.2
+      - PS.1
+    implementation:
+      - Git repository with controlled branches
+      - Required peer review before release
+      - Source history retained in version control
+    evidence:
+      - repository settings
+      - pull request review records
+      - commit history
+
+  - id: SC-02
+    control: Dependency inventory and vulnerability management
+    ssdf:
+      - PO.3
+      - PW.4
+      - RV.1
+      - RV.2
+    implementation:
+      - Dependency manifests and lock/pin files where supported
+      - Automated dependency and vulnerability scanning
+      - Findings tracked through remediation
+    evidence:
+      - dependency manifests
+      - scanner reports
+      - remediation records
+
+  - id: SC-03
+    control: Secure coding and automated security checks
+    ssdf:
+      - PO.4
+      - PW.5
+      - PW.7
+      - PW.8
+    implementation:
+      - Secure coding requirements
+      - Static analysis and test gates
+      - Security-focused negative tests
+    evidence:
+      - CI workflow results
+      - test reports
+      - code review records
+
+  - id: SC-04
+    control: Hardened and controlled build environment
+    ssdf:
+      - PO.5
+      - PW.6
+    implementation:
+      - CI-hosted build execution
+      - Isolated build jobs
+      - Reproducible build inputs where supported
+    evidence:
+      - workflow definitions
+      - build logs
+      - provenance attestations
+
+  - id: SC-05
+    control: Release integrity and artifact identity
+    ssdf:
+      - PS.2
+      - PS.3
+    implementation:
+      - Immutable artifact digest
+      - Signed provenance/attestation
+      - Verification before deployment
+    evidence:
+      - image digest
+      - provenance attestation
+      - verification output
+
+  - id: SC-06
+    control: Kubernetes admission enforcement
+    ssdf:
+      - PO.4
+      - PS.2
+    implementation:
+      - Kyverno admission policies
+      - Fail-closed enforcement for required workload controls
+      - Automated policy regression tests
+    evidence:
+      - Kyverno policies
+      - Kyverno CLI test results
+      - admission policy reports
+
+  - id: SC-07
+    control: Vulnerability response and root-cause learning
+    ssdf:
+      - RV.1
+      - RV.2
+      - RV.3
+    implementation:
+      - Identify and confirm findings
+      - Prioritize and remediate findings
+      - Record root-cause analysis and preventive changes
+    evidence:
+      - security findings
+      - remediation records
+      - post-incident/root-cause records
+
+  - id: SC-08
+    control: Security evidence retention
+    ssdf:
+      - PO.5
+      - PS.3
+      - RV.1
+    implementation:
+      - Retain CI, provenance, policy, and verification evidence
+      - Link evidence to immutable artifact identity
+    evidence:
+      - workflow artifacts
+      - attestations
+      - policy test output
+      - release records
