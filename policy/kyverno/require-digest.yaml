@@ -1,0 +1,28 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: govana-require-image-digest
+  annotations:
+    policies.kyverno.io/title: Require immutable image digests
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-digest
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "All container images must be referenced by an immutable sha256 digest."
+        foreach:
+          - list: "request.object.spec.containers[]"
+            pattern:
+              image: "*@sha256:*"
+          - list: "request.object.spec.initContainers[]"
+            pattern:
+              image: "*@sha256:*"
