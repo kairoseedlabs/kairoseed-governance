@@ -39,8 +39,35 @@ No packet. No evaluation. No authorization. No execution.
 - deny-by-default policy enforcement point
 - canonical SHA-256 audit record primitive
 - automated tests through GitHub Actions
+- **C0 deterministic authorization boundary** with invariant tests
 
-This is an early reference implementation. It is not yet a production security boundary, cryptographic signing service, or independently validated safety system.
+### C0 reference contract
+
+```text
+PROPOSED ACTION
+      ↓
+C0 LOCK
+      ↓
+CANONICALIZE + VALIDATE
+      ↓
+GOVANA POLICY
+      ↓
+PASS / WARN / BLOCK
+      ↓
+AUTHORIZATION EVIDENCE
+      ↓
+PERMITTED EFFECT
+```
+
+Core tested property:
+
+```text
+¬PASS ⇒ ¬EFFECT
+```
+
+The current C0 implementation uses provisional in-process locking and SHA-256 evidence binding. It does **not** claim TPM-backed signing, kernel isolation, transactional atomicity across external systems, or production security-boundary status.
+
+This is an early reference implementation and must be treated as a research artifact until independently tested and validated.
 
 ## Quick start
 
@@ -77,10 +104,11 @@ src/kairoseed/
   governance.py      deterministic policy decision point
   authorization.py   time-bounded authorization evidence
   enforcement.py     deny-by-default enforcement point
-  audit.py           tamper-evident audit primitives
+  audit.py            tamper-evident audit primitives
+  c0.py              minimal C0 authorization boundary
+tests/               governance and C0 invariant tests
 policies/            declarative policy examples
 examples/            executable usage examples
-tests/               governance invariant tests
 docs/foundations/    theological and architectural foundations
 docs/sops/           repeatable governance review procedures
 ```
