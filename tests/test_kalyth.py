@@ -1,18 +1,21 @@
 from dataclasses import replace
 
-from kairoseed.c0 import C0
-from kairoseed.governance import Decision, GovernancePolicy
+from kairoseed.governance import GovernancePolicy
 from kairoseed.kalyth import AdmissionDecision, KALYTH, verify_admission
+from kairoseed.schemas import VerifiedExperimentPacket
 
 
 def make_packet():
-    from kairoseed.schemas import VerifiedExperimentPacket
-
     return VerifiedExperimentPacket(
-        packet_id="vep-kalyth-001",
+        packet_id="00000000-0000-4000-8000-000000000001",
+        agent_id="agent-kalyth",
+        experiment_id="experiment-kalyth",
+        declared_hypothesis="authorized read remains bounded",
+        declared_purpose="test admission boundary",
         tool_request="read",
-        authorization_scope=frozenset({"read"}),
         resource_budget=10,
+        rollback_plan="no external effect",
+        authorization_scope=("read",),
         evidence_references=("evidence:001",),
     )
 
