@@ -1,0 +1,29 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: govana-require-readonly-rootfs
+  annotations:
+    policies.kyverno.io/title: Require read-only root filesystem
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: medium
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: readonly-root-filesystem
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "All containers must use a read-only root filesystem."
+        foreach:
+          - list: "request.object.spec.containers[]"
+            pattern:
+              securityContext:
+                readOnlyRootFilesystem: true
+          - list: "request.object.spec.initContainers[]"
+            pattern:
+              securityContext:
+                readOnlyRootFilesystem: true

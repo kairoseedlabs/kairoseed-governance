@@ -1,0 +1,29 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: govana-require-no-privilege-escalation
+  annotations:
+    policies.kyverno.io/title: Disallow privilege escalation
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: high
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: disallow-privilege-escalation
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Privilege escalation must be disabled for all containers."
+        foreach:
+          - list: "request.object.spec.containers[]"
+            pattern:
+              securityContext:
+                allowPrivilegeEscalation: false
+          - list: "request.object.spec.initContainers[]"
+            pattern:
+              securityContext:
+                allowPrivilegeEscalation: false

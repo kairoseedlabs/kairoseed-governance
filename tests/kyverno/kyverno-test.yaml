@@ -1,0 +1,127 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: govana-supply-chain-policy-tests
+policies:
+  - ../../policy/kyverno/require-digest.yaml
+  - ../../policy/kyverno/require-nonroot.yaml
+  - ../../policy/kyverno/require-no-privilege-escalation.yaml
+  - ../../policy/kyverno/require-dropped-capabilities.yaml
+  - ../../policy/kyverno/require-readonly-rootfs.yaml
+  - ../../policy/kyverno/require-resources.yaml
+  - ../../policy/kyverno/require-runtime-default-seccomp.yaml
+  - ../../policy/kyverno/require-approved-registry.yaml
+resources:
+  - valid/govana-pod.yaml
+  - invalid/mutable-image.yaml
+  - invalid/root-container.yaml
+  - invalid/privilege-escalation.yaml
+  - invalid/capabilities-not-dropped.yaml
+  - invalid/readwrite-rootfs.yaml
+  - invalid/missing-resources.yaml
+  - invalid/unapproved-registry.yaml
+  - invalid/unconfined-seccomp.yaml
+results:
+  - policy: govana-require-image-digest
+    rule: require-digest
+    resources:
+      - govana-valid
+    kind: Pod
+    result: pass
+  - policy: govana-require-image-digest
+    rule: require-digest
+    resources:
+      - govana-mutable-image
+    kind: Pod
+    result: fail
+
+  - policy: govana-require-nonroot
+    rule: run-as-non-root
+    resources:
+      - govana-valid
+    kind: Pod
+    result: pass
+  - policy: govana-require-nonroot
+    rule: run-as-non-root
+    resources:
+      - govana-root
+    kind: Pod
+    result: fail
+
+  - policy: govana-require-no-privilege-escalation
+    rule: disallow-privilege-escalation
+    resources:
+      - govana-valid
+    kind: Pod
+    result: pass
+  - policy: govana-require-no-privilege-escalation
+    rule: disallow-privilege-escalation
+    resources:
+      - govana-priv-escalation
+    kind: Pod
+    result: fail
+
+  - policy: govana-require-dropped-capabilities
+    rule: drop-all-capabilities
+    resources:
+      - govana-valid
+    kind: Pod
+    result: pass
+  - policy: govana-require-dropped-capabilities
+    rule: drop-all-capabilities
+    resources:
+      - govana-capabilities
+    kind: Pod
+    result: fail
+
+  - policy: govana-require-readonly-rootfs
+    rule: readonly-root-filesystem
+    resources:
+      - govana-valid
+    kind: Pod
+    result: pass
+  - policy: govana-require-readonly-rootfs
+    rule: readonly-root-filesystem
+    resources:
+      - govana-readwrite-root
+    kind: Pod
+    result: fail
+
+  - policy: govana-require-resources
+    rule: require-resources
+    resources:
+      - govana-valid
+    kind: Pod
+    result: pass
+  - policy: govana-require-resources
+    rule: require-resources
+    resources:
+      - govana-missing-resources
+    kind: Pod
+    result: fail
+
+  - policy: govana-require-runtime-default-seccomp
+    rule: require-runtime-default-seccomp
+    resources:
+      - govana-valid
+    kind: Pod
+    result: pass
+  - policy: govana-require-runtime-default-seccomp
+    rule: require-runtime-default-seccomp
+    resources:
+      - govana-unconfined-seccomp
+    kind: Pod
+    result: fail
+
+  - policy: govana-require-approved-registry
+    rule: approved-registry
+    resources:
+      - govana-valid
+    kind: Pod
+    result: pass
+  - policy: govana-require-approved-registry
+    rule: approved-registry
+    resources:
+      - govana-unapproved-registry
+    kind: Pod
+    result: fail

@@ -1,0 +1,31 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "ghcr.io/your-org/govana-core",
+      "digest": {
+        "sha256": "<GENERATED-BY-RELEASE-BUILD>"
+      }
+    }
+  ],
+  "predicateType": "https://slsa.dev/provenance/v1",
+  "predicate": {
+    "buildDefinition": {
+      "buildType": "<TRUSTED-BUILD-TYPE-URI>",
+      "externalParameters": {
+        "repository": "kairoseedlabs/kairoseed-governance",
+        "ref": "<IMMUTABLE-SOURCE-REF>",
+        "workflow": "<RELEASE-WORKFLOW>"
+      },
+      "internalParameters": {}
+    },
+    "runDetails": {
+      "builder": {
+        "id": "<TRUSTED-BUILDER-ID>"
+      },
+      "metadata": {
+        "invocationId": "<CI-RUN-ID>"
+      }
+    }
+  }
+}
